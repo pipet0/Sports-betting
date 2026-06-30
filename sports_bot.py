@@ -1,17 +1,3 @@
-"""
-SPORTS BOT
-==========
-Combina:
-1. Predicciones del modelo ML
-2. Whale tracking en Polymarket
-3. Ejecución de apuestas
-
-Lógica de apuesta:
-- Modelo predice ganador con > X% de confianza
-- Precio del token en Polymarket tiene valor esperado positivo
-- Opcionalmente, ballena está apostando en la misma dirección
-"""
-
 import os
 import time
 import pickle
@@ -31,7 +17,7 @@ DRY_RUN = os.environ.get("DRY_RUN", "True").lower() == "true"
 
 # Configuración de estrategia
 MIN_MODEL_CONFIDENCE = 0.55   # mínimo 55% de confianza del modelo
-MIN_EDGE = 0.05               # mínimo 5% de ventaja vs precio de Polymarket
+MIN_EDGE = 0.05               # mínimo 5% de ventaja vs precio
 MIN_WHALE_BET = 500           # considerar ballena si apuesta > $500
 WHALE_BONUS = 0.03            # bajar umbral de edge si hay ballena
 
@@ -42,10 +28,7 @@ DB_PATH = "sports_data.db"
 
 already_bet = set()
 
-
-##########################
-### POLYMARKET CLIENT  ###
-##########################
+### CLIENT  ###
 
 def get_clob_client():
     client = ClobClient(
@@ -72,13 +55,10 @@ def get_token_price(token_id: str, side: str = "buy") -> float:
     except Exception:
         return 0.0
 
-
-##########################
-### WHALE TRACKER      ###
-##########################
+### WHALE TRACKER ###
 
 def get_recent_large_trades(min_amount: float = 500) -> list:
-    """Detecta apuestas grandes recientes en Polymarket"""
+    """Detecta apuestas grandes recientes"""
     try:
         r = requests.get(
             f"{DATA_API}/activity",
@@ -105,7 +85,7 @@ def get_recent_large_trades(min_amount: float = 500) -> list:
                 })
         return whales
     except Exception as e:
-        print(f"  ❌ Error whale tracker: {e}")
+        print(f"   Error whale tracker: {e}")
         return []
 
 
@@ -117,17 +97,15 @@ def find_whale_signal(market_title: str, home_team: str,
     for whale in whales:
         title = whale["title"].lower()
         if home_team.lower()[:6] in title or away_team.lower()[:6] in title:
-            print(f"  🐋 Ballena detectada: ${whale['size']:.0f} en {whale['outcome']}")
+            print(f"   Ballena detectada: ${whale['size']:.0f} en {whale['outcome']}")
             return whale
     return None
 
 
-##########################
-### BUSCAR MERCADOS    ###
-##########################
+### BUSCAR MERCADOS ###
 
 def find_polymarket_match(home_team: str, away_team: str) -> dict | None:
-    """Busca el mercado de Polymarket para un partido"""
+    """Busca el mercado para un partido"""
     try:
         # Buscar por nombre del equipo
         for team in [home_team, away_team]:
@@ -156,7 +134,7 @@ def find_polymarket_match(home_team: str, away_team: str) -> dict | None:
 
         return None
     except Exception as e:
-        print(f"  ❌ Error buscando mercado: {e}")
+        print(f"   Error buscando mercado: {e}")
         return None
 
 
@@ -187,9 +165,8 @@ def get_market_tokens(market: dict, predicted_result: str,
     return token_id, outcome_name
 
 
-##########################
-### CALCULAR EDGE      ###
-##########################
+
+### CALCULAR EDGE  ###
 
 def calculate_edge(model_prob: float, token_price: float) -> float:
     """
@@ -200,9 +177,7 @@ def calculate_edge(model_prob: float, token_price: float) -> float:
     return model_prob - token_price
 
 
-##########################
-### EJECUTAR APUESTA   ###
-##########################
+### EJECUTAR APUESTA ###
 
 def place_bet(token_id: str, amount: float):
     client = get_clob_client()
@@ -214,10 +189,7 @@ def place_bet(token_id: str, amount: float):
     )
     client.create_and_post_market_order(order)
 
-
-##########################
-### ANALIZAR PARTIDO   ###
-##########################
+### ANALIZAR PARTIDO  ###
 
 def analyze_match(date: str, home_team: str,
                    away_team: str, competition: str):
@@ -228,13 +200,13 @@ def analyze_match(date: str, home_team: str,
         return
 
     print(f"\n{'─' * 60}")
-    print(f"  🔍 {home_team} vs {away_team} | {competition} | {date}")
+    print(f"   {home_team} vs {away_team} | {competition} | {date}")
     print(f"{'─' * 60}")
 
     # 1. Predicción del modelo
     prediction = predict_match(home_team, away_team, competition)
     if not prediction:
-        print("  ⚠️ Sin predicción disponible")
+        print("   Sin predicción disponible")
         return
 
     prob_home = prediction["prob_home_win"]
@@ -244,16 +216,16 @@ def analyze_match(date: str, home_team: str,
     confidence = prediction["confidence_result"]
 
     if confidence < MIN_MODEL_CONFIDENCE:
-        print(f"  ⚠️ Confianza baja ({confidence*100:.1f}%). Saltando...")
+        print(f"   Confianza baja ({confidence*100:.1f}%). Saltando...")
         return
 
     # 2. Buscar mercado en Polymarket
     market = find_polymarket_match(home_team, away_team)
     if not market:
-        print(f"  ⚠️ Mercado no encontrado en Polymarket")
+        print(f"   Mercado no encontrado en Polymarket")
         return
 
-    print(f"  ✅ Mercado encontrado: {market.get('question', '')[:50]}")
+    print(f"   Mercado encontrado: {market.get('question', '')[:50]}")
 
     # 3. Obtener token correcto
     token_id, outcome_name = get_market_tokens(
@@ -261,20 +233,20 @@ def analyze_match(date: str, home_team: str,
     )
 
     if not token_id:
-        print(f"  ⚠️ Token no encontrado para resultado {predicted}")
+        print(f"   Token no encontrado para resultado {predicted}")
         return
 
     # 4. Precio del token
     token_price = get_token_price(token_id, "buy")
     if token_price <= 0 or token_price >= 0.95:
-        print(f"  ⚠️ Precio del token inválido: {token_price*100:.1f}¢")
+        print(f"   Precio del token inválido: {token_price*100:.1f}¢")
         return
 
     # 5. Calcular edge
     model_prob = prob_home if predicted == "H" else prob_away
     edge = calculate_edge(model_prob, token_price)
 
-    print(f"\n  📊 Análisis:")
+    print(f"\n   Análisis:")
     print(f"     Predicción modelo: {predicted} ({model_prob*100:.1f}%)")
     print(f"     Precio token:      {token_price*100:.1f}¢")
     print(f"     Edge:              {edge*100:.1f}%")
@@ -289,36 +261,34 @@ def analyze_match(date: str, home_team: str,
         whale_outcome = whale.get("outcome", "").lower()
         if home_team.lower()[:5] in whale_outcome and predicted == "H":
             effective_min_edge = MIN_EDGE - WHALE_BONUS
-            print(f"  🐋 Ballena confirma predicción. Edge mínimo reducido a {effective_min_edge*100:.1f}%")
+            print(f"   Ballena confirma predicción. Edge mínimo reducido a {effective_min_edge*100:.1f}%")
         elif away_team.lower()[:5] in whale_outcome and predicted == "A":
             effective_min_edge = MIN_EDGE - WHALE_BONUS
-            print(f"  🐋 Ballena confirma predicción. Edge mínimo reducido a {effective_min_edge*100:.1f}%")
+            print(f"   Ballena confirma predicción. Edge mínimo reducido a {effective_min_edge*100:.1f}%")
 
     # 7. Decisión
     if edge < effective_min_edge:
         print(f"\n  ❌ Edge insuficiente ({edge*100:.1f}% < {effective_min_edge*100:.1f}%). No apostar.")
         return
 
-    print(f"\n  ✅ APOSTAR: ${BET_AMOUNT:.2f} en {outcome_name} @ {token_price*100:.1f}¢")
+    print(f"\n   APOSTAR: ${BET_AMOUNT:.2f} en {outcome_name} @ {token_price*100:.1f}¢")
     print(f"     Edge: {edge*100:.1f}% | Confianza: {confidence*100:.1f}%")
 
     if whale:
-        print(f"     🐋 Confirmado por ballena (${whale['size']:.0f})")
+        print(f"      Confirmado por ballena (${whale['size']:.0f})")
 
     if DRY_RUN:
-        print(f"  🟡 DRY RUN — no se ejecuta")
+        print(f"   DRY RUN — no se ejecuta")
     else:
         try:
             place_bet(token_id, BET_AMOUNT)
-            print(f"  ✅ Apuesta ejecutada")
+            print(f"   Apuesta ejecutada")
             already_bet.add(match_key)
         except Exception as e:
-            print(f"  ❌ Error ejecutando apuesta: {e}")
+            print(f"   Error ejecutando apuesta: {e}")
 
 
-##########################
-### MAIN               ###
-##########################
+###   MAIN   ###
 
 def main():
     print("\n" + "═" * 60)
@@ -328,12 +298,12 @@ def main():
     print(f"  Edge mínimo: {MIN_EDGE*100:.0f}%")
     print(f"  Whale mínimo: ${MIN_WHALE_BET}")
     print(f"  Monto por apuesta: ${BET_AMOUNT}")
-    print(f"  Modo: {'DRY RUN 🟡' if DRY_RUN else 'LIVE 🟢'}")
+    print(f"  Modo: {'DRY RUN ' if DRY_RUN else 'LIVE '}")
     print("═" * 60 + "\n")
 
     while True:
         try:
-            print(f"\n🔍 Revisando próximos partidos... {datetime.now().strftime('%H:%M:%S')}")
+            print(f"\n Revisando próximos partidos... {datetime.now().strftime('%H:%M:%S')}")
 
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
@@ -351,14 +321,14 @@ def main():
                 analyze_match(date, home, away, competition)
                 time.sleep(2)
 
-            print(f"\n⏳ Próxima revisión en 30 minutos...")
+            print(f"\n Próxima revisión en 30 minutos...")
             time.sleep(1800)
 
         except KeyboardInterrupt:
-            print("\n\n⏹ Bot detenido.")
+            print("\n\n Bot detenido.")
             break
         except Exception as e:
-            print(f"\n❌ Error: {e}")
+            print(f"\n Error: {e}")
             time.sleep(60)
 
 
