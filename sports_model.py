@@ -5,8 +5,6 @@ Modelo predictivo de resultados de fútbol usando LightGBM.
 Predice:
 1. Resultado del partido (Local gana / Empate / Visitante gana)
 2. Over/Under 2.5 goles
-
-Instalar: pip install lightgbm scikit-learn pandas numpy
 """
 
 import sqlite3
@@ -21,10 +19,7 @@ from sklearn.preprocessing import LabelEncoder
 DB_PATH = "sports_data.db"
 MODEL_PATH = "sports_model.pkl"
 
-
-##########################
 ### FEATURE ENGINEERING ##
-##########################
 
 def get_team_features(team: str, competition: str,
                        is_home: bool, conn) -> dict:
@@ -125,15 +120,12 @@ def build_dataset() -> pd.DataFrame:
     conn.close()
 
     df = pd.DataFrame(rows)
-    print(f"✅ Dataset: {len(df)} partidos con features")
+    print(f" Dataset: {len(df)} partidos con features")
     print(f"   Distribución resultados: {df['result'].value_counts().to_dict()}")
     print(f"   Over 2.5: {df['over_25'].mean()*100:.1f}%")
     return df
 
-
-##########################
 ### ENTRENAMIENTO       ###
-##########################
 
 def train_models(df: pd.DataFrame):
     """Entrena modelo de resultado y over/under"""
@@ -164,7 +156,7 @@ def train_models(df: pd.DataFrame):
     model_result.fit(X_train, y_train)
     y_pred = model_result.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-    print(f"\n📊 Modelo Resultado — Accuracy: {acc*100:.1f}%")
+    print(f"\n Modelo Resultado — Accuracy: {acc*100:.1f}%")
     print(classification_report(y_test, y_pred,
                                   target_names=le.classes_))
 
@@ -187,7 +179,7 @@ def train_models(df: pd.DataFrame):
     model_over.fit(X_train2, y_train2)
     y_pred2 = model_over.predict(X_test2)
     acc2 = accuracy_score(y_test2, y_pred2)
-    print(f"\n📊 Modelo Over/Under — Accuracy: {acc2*100:.1f}%")
+    print(f"\n Modelo Over/Under — Accuracy: {acc2*100:.1f}%")
     print(classification_report(y_test2, y_pred2,
                                   target_names=["Under 2.5", "Over 2.5"]))
 
@@ -196,7 +188,7 @@ def train_models(df: pd.DataFrame):
         model_result.feature_importances_,
         index=feature_cols
     ).sort_values(ascending=False)
-    print(f"\n🔑 Top 10 features más importantes:")
+    print(f"\n Top 10 features más importantes:")
     print(importance.head(10).to_string())
 
     # Guardar modelos
@@ -210,13 +202,10 @@ def train_models(df: pd.DataFrame):
     }
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(models, f)
-    print(f"\n✅ Modelos guardados en {MODEL_PATH}")
+    print(f"\n Modelos guardados en {MODEL_PATH}")
     return models
 
-
-##########################
 ### PREDICCIÓN         ###
-##########################
 
 def predict_match(home_team: str, away_team: str,
                    competition: str) -> dict:
@@ -225,7 +214,7 @@ def predict_match(home_team: str, away_team: str,
         with open(MODEL_PATH, "rb") as f:
             models = pickle.load(f)
     except FileNotFoundError:
-        print("❌ Modelo no encontrado. Entrena primero con train()")
+        print(" Modelo no encontrado. Entrena primero con train()")
         return {}
 
     conn = sqlite3.connect(DB_PATH)
@@ -234,7 +223,7 @@ def predict_match(home_team: str, away_team: str,
     conn.close()
 
     if not home_features or not away_features:
-        print(f"❌ No hay datos para {home_team} o {away_team}")
+        print(f" No hay datos para {home_team} o {away_team}")
         return {}
 
     row = {**home_features, **away_features}
@@ -278,12 +267,12 @@ def predict_match(home_team: str, away_team: str,
     print(f"  PREDICCIÓN: {home_team} vs {away_team}")
     print(f"  Competición: {competition}")
     print(f"{'═' * 60}")
-    print(f"  🏠 {home_team} gana:  {prediction['prob_home_win']*100:.1f}%")
-    print(f"  🤝 Empate:           {prediction['prob_draw']*100:.1f}%")
-    print(f"  ✈️  {away_team} gana: {prediction['prob_away_win']*100:.1f}%")
-    print(f"  ⚽ Over 2.5 goles:  {prediction['prob_over_25']*100:.1f}%")
-    print(f"\n  📊 Predicción: {result_pred} | {prediction['predicted_goals']}")
-    print(f"  🎯 Confianza resultado: {prediction['confidence_result']*100:.1f}%")
+    print(f"   {home_team} gana:  {prediction['prob_home_win']*100:.1f}%")
+    print(f"   Empate:           {prediction['prob_draw']*100:.1f}%")
+    print(f"    {away_team} gana: {prediction['prob_away_win']*100:.1f}%")
+    print(f"   Over 2.5 goles:  {prediction['prob_over_25']*100:.1f}%")
+    print(f"\n   Predicción: {result_pred} | {prediction['predicted_goals']}")
+    print(f"   Confianza resultado: {prediction['confidence_result']*100:.1f}%")
     print(f"{'═' * 60}")
 
     return prediction
@@ -311,21 +300,18 @@ def predict_all_upcoming():
 
     return predictions
 
-
-##########################
-### MAIN               ###
-##########################
+### MAIN    ###
 
 def train():
     """Entrena los modelos"""
-    print("🏋️ Construyendo dataset...")
+    print(" Construyendo dataset...")
     df = build_dataset()
 
     if len(df) < 50:
         print("❌ Pocos datos para entrenar. Ejecuta sports_data.py primero.")
         return
 
-    print("🤖 Entrenando modelos...")
+    print(" Entrenando modelos...")
     models = train_models(df)
     return models
 
