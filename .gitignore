@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+sports_data.db
+sports_model.pkl
+sports_data.db
+sports_model.pkl
