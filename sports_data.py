@@ -1,8 +1,7 @@
 """
 SPORTS DATA MODULE
-==================
+
 Obtiene datos de fútbol desde football-data.org
-API key gratuita: 10 llamadas/minuto, datos históricos completos
 
 Ligas disponibles con plan gratuito:
 - PL  = Premier League
@@ -43,9 +42,7 @@ LEAGUES = {
 }
 
 
-##########################
-### BASE DE DATOS       ###
-##########################
+### BASE DE DATOS    ###
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -139,12 +136,10 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print("✅ Base de datos inicializada")
+    print(" Base de datos inicializada")
 
 
-##########################
-### API CALLS          ###
-##########################
+### API CALLS  ###
 
 def api_get(endpoint: str, params: dict = None) -> dict:
     """Llamada a la API con manejo de rate limit"""
@@ -152,14 +147,14 @@ def api_get(endpoint: str, params: dict = None) -> dict:
     try:
         r = requests.get(url, headers=HEADERS, params=params, timeout=10)
         if r.status_code == 429:
-            print("  ⏳ Rate limit alcanzado, esperando 60s...")
+            print("   Rate limit alcanzado, esperando 60s...")
             time.sleep(60)
             r = requests.get(url, headers=HEADERS, params=params, timeout=10)
         r.raise_for_status()
         time.sleep(6)  # máximo 10 llamadas/minuto
         return r.json()
     except Exception as e:
-        print(f"  ❌ Error API: {e}")
+        print(f"   Error API: {e}")
         return {}
 
 
@@ -169,7 +164,7 @@ def get_matches(competition: str, season: str = "2024") -> list:
                    params={"season": season})
     matches = data.get("matches", [])
     played = [m for m in matches if m.get("status") == "FINISHED"]
-    print(f"  ✅ {len(played)} partidos jugados en {competition} {season}")
+    print(f"   {len(played)} partidos jugados en {competition} {season}")
     return played
 
 
@@ -188,7 +183,7 @@ def get_upcoming(competition: str) -> list:
                 upcoming.append(m)
         except Exception:
             pass
-    print(f"  ✅ {len(upcoming)} próximos partidos en {competition}")
+    print(f"   {len(upcoming)} próximos partidos en {competition}")
     return upcoming
 
 
@@ -202,9 +197,7 @@ def get_standings(competition: str, season: str = "2024") -> list:
     return []
 
 
-##########################
-### GUARDAR DATOS       ###
-##########################
+### GUARDAR DATOS   ###
 
 def save_match(match: dict, competition: str):
     try:
@@ -249,7 +242,7 @@ def save_match(match: dict, competition: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"  ❌ Error guardando partido: {e}")
+        print(f"   Error guardando partido: {e}")
 
 
 def save_upcoming(match: dict, competition: str):
@@ -274,7 +267,7 @@ def save_upcoming(match: dict, competition: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"  ❌ Error guardando próximo partido: {e}")
+        print(f"   Error guardando próximo partido: {e}")
 
 
 def save_standings(table: list, competition: str, season: str):
@@ -306,12 +299,10 @@ def save_standings(table: list, competition: str, season: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"  ❌ Error guardando tabla: {e}")
+        print(f"   Error guardando tabla: {e}")
 
 
-##########################
-### CALCULAR STATS      ###
-##########################
+### CALCULAR STATS  ###
 
 def calculate_team_stats():
     """Calcula estadísticas detalladas por equipo"""
@@ -412,12 +403,10 @@ def calculate_team_stats():
 
     conn.commit()
     conn.close()
-    print("✅ Estadísticas calculadas")
+    print(" Estadísticas calculadas")
 
 
-##########################
-### REPORTE            ###
-##########################
+### REPORTE   ###
 
 def print_upcoming_with_stats():
     """Muestra próximos partidos con estadísticas"""
@@ -459,9 +448,7 @@ def print_upcoming_with_stats():
     conn.close()
 
 
-##########################
-### MAIN               ###
-##########################
+### MAIN   ###
 
 def collect_all_data():
     """Recolecta todos los datos"""
@@ -473,7 +460,7 @@ def collect_all_data():
     seasons = ["2024", "2023"]
 
     for code, name in LEAGUES.items():
-        print(f"\n📊 Recolectando {name} ({code})...")
+        print(f"\n Recolectando {name} ({code})...")
 
         for season in seasons:
             print(f"  Temporada {season}...")
@@ -490,7 +477,7 @@ def collect_all_data():
         table = get_standings(code)
         save_standings(table, code, "2024")
 
-    print("\n⚙️ Calculando estadísticas...")
+    print("\n Calculando estadísticas...")
     calculate_team_stats()
     print_upcoming_with_stats()
 
@@ -502,7 +489,7 @@ def collect_all_data():
     upcoming_count = c.fetchone()[0]
     conn.close()
 
-    print(f"\n✅ Listo: {total:,} partidos históricos | {upcoming_count} próximos")
+    print(f"\n Listo: {total:,} partidos históricos | {upcoming_count} próximos")
 
 
 if __name__ == "__main__":
